@@ -41,7 +41,7 @@ function getServer() {
     },
 
     RandomNumbers: (call) => {
-      const { maxVal } = call.request ? call.request : 0;
+      const { maxVal = 1 } = call.request;
       call.write({ num: Math.floor(Math.random() * maxVal) });
       call.end();
     },
