@@ -3,6 +3,8 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import { ProtoGrpcType } from './proto/random';
 import { RandomHandlers } from './proto/randomPackage/Random';
+import { ChatRequest } from './proto/randomPackage/ChatRequest';
+import { ChatResponse } from './proto/randomPackage/ChatResponse';
 
 const PORT = 8082;
 const PROTO_FILES = './proto/random.proto';
@@ -12,6 +14,7 @@ const grpcObj = (grpc.loadPackageDefinition(packageDefinition) as unknown) as Pr
 const randomPackage = grpcObj.randomPackage;
 
 const todoList: any = [];
+const callObjByUsername = new Map<string, grpc.ServerDuplexStream<ChatRequest, ChatResponse>>();
 
 function main() {
   const server = getServer();
@@ -36,11 +39,13 @@ function getServer() {
       console.log(req.request);
       res(null, { message: 'Pong' })
     },
+
     RandomNumbers: (call) => {
       const { maxVal } = call.request ? call.request : 0;
       call.write({ num: Math.floor(Math.random() * maxVal) });
       call.end();
     },
+
     TodoList: (call, callback) => {
       call.on('data', (chunk) => {
         todoList.push(chunk);
@@ -49,6 +54,46 @@ function getServer() {
 
       call.on('end', () => {
         callback(null, { todos: todoList});
+      });
+    },
+
+    Chat: (call) => {
+      call.on('data', (req) => {
+        const userName = call.metadata.get('username')[0] as string;
+        const msg = req.message;
+
+        for(let [user, usersCall] of callObjByUsername) {
+          if(userName !== user) {
+            usersCall.write({
+              username: userName,
+              message: msg
+            })
+          }
+        }
+
+        if(callObjByUsername.get(userName) === undefined) {
+          callObjByUsername.set(userName, call);
+        }
+      });
+
+      call.on('end', () => {
+        const userName = call.metadata.get('username')[0] as string;
+        callObjByUsername.delete(userName);
+        console.log(`${userName} is leaving`);
+        
+        for(let [user, usersCall] of callObjByUsername) {
+          usersCall.write({
+            username: userName,
+            message: 'Has Left the Chat!'
+          })
+        }
+
+        call.write({
+          username: userName,
+          message: `See you later ${userName}`
+        })
+
+        call.end();
       })
     }
   } as RandomHandlers);
