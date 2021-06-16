@@ -26,12 +26,36 @@ client.waitForReady(deadline, (err) =>{
 });
 
 function onClientReady() {
-  client.PingPong({message: 'Ping'}, (err, result) => {
-    if(err){
+  // client.PingPong({message: 'Ping'}, (err, result) => {
+  //   if(err){
+  //     console.error(err);
+  //     return;
+  //   }
+
+  //    console.log(result)
+  // });
+
+  // const stream = client.RandomNumbers({maxVal: 85});
+  // stream.on('data', (chunk) => {
+  //   console.log(chunk);
+  // });
+  // stream.on('end', () => {
+  //   console.log('Communication ended');
+    
+  // });
+
+  const stream = client.TodoList((err, result) => {
+    if(err) {
       console.error(err);
       return;
     }
 
-    console.log(result)
-  });
+    console.log(result);
+  })
+
+  stream.write({ todo: 'Walk on the street', status: 'Never'});
+  stream.write({ todo: 'Take a shower', status: 'Daily'});
+  stream.write({ todo: 'Drive on street', status: 'Weekly'});
+
+  stream.end();
 }

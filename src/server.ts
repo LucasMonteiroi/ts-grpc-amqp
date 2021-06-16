@@ -11,6 +11,8 @@ const packageDefinition = protoLoader.loadSync(path.resolve(__dirname, PROTO_FIL
 const grpcObj = (grpc.loadPackageDefinition(packageDefinition) as unknown) as ProtoGrpcType;
 const randomPackage = grpcObj.randomPackage;
 
+const todoList: any = [];
+
 function main() {
   const server = getServer();
 
@@ -33,6 +35,21 @@ function getServer() {
       req.request;
       console.log(req.request);
       res(null, { message: 'Pong' })
+    },
+    RandomNumbers: (call) => {
+      const { maxVal } = call.request ? call.request : 0;
+      call.write({ num: Math.floor(Math.random() * maxVal) });
+      call.end();
+    },
+    TodoList: (call, callback) => {
+      call.on('data', (chunk) => {
+        todoList.push(chunk);
+        console.log(chunk);
+      })
+
+      call.on('end', () => {
+        callback(null, { todos: todoList});
+      })
     }
   } as RandomHandlers);
 
